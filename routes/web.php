@@ -16,3 +16,7 @@
 $router->get('/', function () use ($router) {
     return $router->app->version();
 });
+$router->post('api/v1/child-birth','ChildBirthController@store');
+$router->put('api/v1/child-birth/{id}','ChildBirthController@update');
+$router->delete('api/v1/child-birth/{id}','ChildBirthController@destroy');
+
