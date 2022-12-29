@@ -15,6 +15,7 @@ class ChildBirth extends Model
         'baby_weight',
         'baby_length',
         'birth_description',
-        'birthing_method'
+        'birthing_method',
+        'created_at'
     ];
 }

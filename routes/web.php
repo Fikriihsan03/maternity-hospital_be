@@ -19,4 +19,7 @@ $router->get('/', function () use ($router) {
 $router->post('api/v1/child-birth','ChildBirthController@store');
 $router->put('api/v1/child-birth/{id}','ChildBirthController@update');
 $router->delete('api/v1/child-birth/{id}','ChildBirthController@destroy');
-
+$router->get('api/v1/child-birth/birth-history','ChildBirthController@birthHistory');
+$router->get('api/v1/child-birth/report','ChildBirthController@report');
+$router->get('api/v1/child-birth/report/{year}/annual','ChildBirthController@annualReport');
+$router->get('api/v1/child-birth/report/{year}/monthly/{month}','ChildBirthController@monthlyReport');
