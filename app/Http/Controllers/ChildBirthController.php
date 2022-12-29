@@ -26,12 +26,12 @@ class ChildBirthController extends Controller
         if ($month == null) {
             $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->paginate($perPage);
         } else {
-            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->get();
+            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->paginate($perPage);
         }
         if (count($baseData) == 0) {
             return response()->json(['message' => 'Child Birth Record Not Found'], 404);
         }
-        return response()->json($baseData);
+        return response()->json(['message'=>'success','data'=>$baseData],200);
     }
     public function store(Request $request)
     {
