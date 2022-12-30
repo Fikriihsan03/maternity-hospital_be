@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChildBirth;
+use App\Models\Mothers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator as FacadesValidator;
+use stdClass;
 
 class ChildBirthController extends Controller
 {
@@ -31,12 +33,13 @@ class ChildBirthController extends Controller
         if (count($baseData) == 0) {
             return response()->json(['message' => 'Child Birth Record Not Found'], 404);
         }
-        return response()->json(['message'=>'success','data'=>$baseData],200);
+        return response()->json(['message' => 'success', 'data' => $baseData], 200);
     }
     public function store(Request $request)
     {
         $validator = FacadesValidator::make($request->all(), [
             'mother_name' => 'required',
+            'mother_nik' => 'required|integer|min_digits:16',
             'mother_age' => 'required',
             'gestational_age' => 'required|integer',
             'baby_gender' => 'required',
@@ -47,10 +50,43 @@ class ChildBirthController extends Controller
 
         ]);
         if ($validator->fails()) {
-            return response()->json(['message' => 'Please fill all form'], 422);
+            return response()->json(['message' => 'Please fill all form correctly'], 422);
         }
-        $childBirth = ChildBirth::create($request->all());
+        $isRegisteredMother = Mothers::where('mother_nik', $request->input('mother_nik'))->get();
+        if ($isRegisteredMother->isEmpty()) {
+            $isRegisteredMother->mother_name = $request->input('mother_name');
+            $isRegisteredMother->nik = $request->input('mother_nik');
+            $savingMotherData = Mothers::create([
+                'mother_nik' => $request->input('mother_nik'),
+                'mother_name' => $request->input('mother_name')
+            ]);
+            
+            $childBirth = ChildBirth::create([
+                'mother_id' => $savingMotherData->id,
+                'mother_age' => $request->input('mother_age'),
+                'gestational_age' => $request->input('gestational_age'),
+                'baby_gender' => $request->input('baby_gender'),
+                'baby_weight' => $request->input('baby_weight'),
+                'baby_length' => $request->input('baby_length'),
+                'birthing_method' => $request->input('birthing_method'),
+                'birth_description' => $request->input('birth_description')
+            ]);
+        } else {
+            $childBirth = ChildBirth::create([
+                'mother_id' => $isRegisteredMother[0]['id'],
+                'mother_age' => $request->input('mother_age'),
+                'gestational_age' => $request->input('gestational_age'),
+                'baby_gender' => $request->input('baby_gender'),
+                'baby_weight' => $request->input('baby_weight'),
+                'baby_length' => $request->input('baby_length'),
+                'birthing_method' => $request->input('birthing_method'),
+                'birth_description' => $request->input('birth_description')
+            ]);
+        }
+        // dd($isRegisteredMother);
         return response()->json(['message' => 'success', 'data' => $childBirth], 200);
+
+        // return response()->json();
     }
 
     public function update(Request $request, $id)

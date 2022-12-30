@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ChildBirth extends Model
 {
     protected $fillable = [
-        'mother_name',
+        'mother_id',
         'mother_age',
         'gestational_age',
         'baby_gender',
