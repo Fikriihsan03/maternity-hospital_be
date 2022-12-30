@@ -35,6 +35,7 @@ class ChildBirthController extends Controller
         }
         return response()->json(['message' => 'success', 'data' => $baseData], 200);
     }
+
     public function store(Request $request)
     {
         $validator = FacadesValidator::make($request->all(), [
@@ -60,7 +61,7 @@ class ChildBirthController extends Controller
                 'mother_nik' => $request->input('mother_nik'),
                 'mother_name' => $request->input('mother_name')
             ]);
-            
+
             $childBirth = ChildBirth::create([
                 'mother_id' => $savingMotherData->id,
                 'mother_age' => $request->input('mother_age'),
@@ -83,10 +84,8 @@ class ChildBirthController extends Controller
                 'birth_description' => $request->input('birth_description')
             ]);
         }
-        // dd($isRegisteredMother);
-        return response()->json(['message' => 'success', 'data' => $childBirth], 200);
 
-        // return response()->json();
+        return response()->json(['message' => 'success', 'data' => $childBirth], 200);
     }
 
     public function update(Request $request, $id)
@@ -108,6 +107,17 @@ class ChildBirthController extends Controller
 
         return response()->json(['message' => "success", 'data' => $childBirth], 200);
     }
+
+    public function detail(Request $request, $id)
+    {
+        $childBirth = ChildBirth::find($id);
+        if (empty($childBirth)) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        $motherName = Mothers::find($childBirth->mother_id);
+        return response()->json(['message' => "success", 'mother_name' => $motherName->mother_name, 'data' => $childBirth], 200);
+    }
+
     public function destroy(Request $request, $id)
     {
         $childBirth = ChildBirth::find($id);
@@ -117,44 +127,40 @@ class ChildBirthController extends Controller
         $childBirth->delete();
         return response()->json(["message" => "removed successfully"], 200);
     }
+
     public function report(Request $request)
     {
         $yearList = ChildBirth::selectRaw('YEAR(created_at) AS year')->distinct()->get();
         return response()->json(['message' => 'success', 'data' => $yearList]);
     }
+
     function detailReport($data)
     {
         $totalBaby = count($data);
-        $healthyBaby = count($data->filter(function ($val) {
-            return $val->birth_description == "healthy";
-        }));
-        $disabledBaby = count($data->filter(function ($val) {
-            return $val->birth_description == "disabled";
-        }));
-        $diedBaby = count($data->filter(function ($val) {
-            return $val->birth_description == "died";
-        }));
-        $maleBaby = count($data->filter(function ($val) {
-            return $val->baby_gender == "male";
-        }));
-        $femaleBaby = count($data->filter(function ($val) {
-            return $val->baby_gender == "female";
-        }));
-        $waterBirthing = count($data->filter(function ($val) {
-            return $val->birthing_method == "water";
-        }));
-        $vaginalBirthing = count($data->filter(function ($val) {
-            return $val->birthing_method == "vaginal";
-        }));
-        $lotusBirthing = count($data->filter(function ($val) {
-            return $val->birthing_method == "lotus";
-        }));
-        $gentleBirthing = count($data->filter(function ($val) {
-            return $val->birthing_method == "gentle";
-        }));
-        $caesarBirthing = count($data->filter(function ($val) {
-            return $val->birthing_method == "caesar";
-        }));
+        function getAmount($data, $property, $comparison)
+        {
+            $result =  count($data->filter(function ($val) use ($comparison, $property) {
+                switch ($property) {
+                    case 'birth_description':
+                        return $val->birth_description == $comparison;
+                    case 'baby_gender':
+                        return $val->baby_gender == $comparison;
+                    case 'birthing_method':
+                        return $val->birthing_method == $comparison;
+                }
+            }));
+            return $result;
+        }
+        $healthyBaby = getAmount($data, 'birth_description', 'healthy');
+        $disabledBaby = getAmount($data, 'birth_description', 'disabled');
+        $diedBaby = getAmount($data, 'birth_description', 'died');
+        $maleBaby = getAmount($data, 'baby_gender', 'male');
+        $femaleBaby = getAmount($data, 'baby_gender', 'female');
+        $waterBirthing = getAmount($data, 'birthing_method', 'water');
+        $vaginalBirthing = getAmount($data, 'birthing_method', 'vaginal');
+        $lotusBirthing = getAmount($data, 'birthing_method', 'lotus');
+        $gentleBirthing =getAmount($data, 'birthing_method', 'gentle');
+        $caesarBirthing = getAmount($data, 'birthing_method', 'caesar');
         $finalData = [
             'totalBaby' => $totalBaby,
             'birth_description' => ['healthy' => $healthyBaby, 'disabled' => $disabledBaby, 'died' => $diedBaby],
@@ -163,6 +169,7 @@ class ChildBirthController extends Controller
         ];
         return $finalData;
     }
+
     public function annualReport(Request $request, $year)
     {
         $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->get();
@@ -179,6 +186,7 @@ class ChildBirthController extends Controller
         }
         return response()->json(['message' => 'success', 'data' => $result, 'average_gestational_age' => $averageGestationalAge[0]['value'], 'maternal_age_group' => $motherAgeList]);
     }
+
     public function monthlyReport(Request $request, $year, $month)
     {
         $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->get();
