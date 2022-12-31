@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChildBirth;
 use App\Models\Mothers;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator as FacadesValidator;
 use stdClass;
@@ -26,9 +27,9 @@ class ChildBirthController extends Controller
         $month = $request->query('month');
 
         if ($month == null) {
-            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->paginate($perPage);
+            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->orderBy('created_at', 'desc')->paginate($perPage);
         } else {
-            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->paginate($perPage);
+            $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->orderBy('created_at', 'desc')->paginate($perPage);
         }
         if (count($baseData) == 0) {
             return response()->json(['message' => 'Child Birth Record Not Found'], 404);
@@ -54,6 +55,16 @@ class ChildBirthController extends Controller
             return response()->json(['message' => 'Please fill all form correctly'], 422);
         }
         $isRegisteredMother = Mothers::where('mother_nik', $request->input('mother_nik'))->get();
+        $childData = [
+
+            'mother_age' => $request->input('mother_age'),
+            'gestational_age' => $request->input('gestational_age'),
+            'baby_gender' => $request->input('baby_gender'),
+            'baby_weight' => $request->input('baby_weight'),
+            'baby_length' => $request->input('baby_length'),
+            'birthing_method' => $request->input('birthing_method'),
+            'birth_description' => $request->input('birth_description')
+        ];
         if ($isRegisteredMother->isEmpty()) {
             $isRegisteredMother->mother_name = $request->input('mother_name');
             $isRegisteredMother->nik = $request->input('mother_nik');
@@ -64,24 +75,21 @@ class ChildBirthController extends Controller
 
             $childBirth = ChildBirth::create([
                 'mother_id' => $savingMotherData->id,
-                'mother_age' => $request->input('mother_age'),
-                'gestational_age' => $request->input('gestational_age'),
-                'baby_gender' => $request->input('baby_gender'),
-                'baby_weight' => $request->input('baby_weight'),
-                'baby_length' => $request->input('baby_length'),
-                'birthing_method' => $request->input('birthing_method'),
-                'birth_description' => $request->input('birth_description')
+                ...$childData
             ]);
         } else {
+            $totalBabyFromOneMotherADay = count(ChildBirth::where('mother_id', $isRegisteredMother[0]['id'])->whereDate('created_at', '=', Carbon::today()->toDateString())->get());
+            if ($totalBabyFromOneMotherADay > 0) {
+                $childBirth = ChildBirth::create([
+                    'mother_id' => $isRegisteredMother[0]['id'],
+                    ...$childData,
+                    'created_at' => Carbon::now()->addMinutes($totalBabyFromOneMotherADay * 15),
+                    'updated_at' => Carbon::now()->addMinutes($totalBabyFromOneMotherADay * 15)
+                ]);
+            }
             $childBirth = ChildBirth::create([
                 'mother_id' => $isRegisteredMother[0]['id'],
-                'mother_age' => $request->input('mother_age'),
-                'gestational_age' => $request->input('gestational_age'),
-                'baby_gender' => $request->input('baby_gender'),
-                'baby_weight' => $request->input('baby_weight'),
-                'baby_length' => $request->input('baby_length'),
-                'birthing_method' => $request->input('birthing_method'),
-                'birth_description' => $request->input('birth_description')
+                ...$childData
             ]);
         }
 
@@ -95,13 +103,12 @@ class ChildBirthController extends Controller
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $childBirth->mother_name = $request->input('mother_name');
         $childBirth->mother_age = $request->input('mother_age');
         $childBirth->gestational_age = $request->input('gestational_age');
         $childBirth->baby_gender = $request->input("baby_gender");
         $childBirth->baby_weight = $request->input("baby_weight");
         $childBirth->baby_length = $request->input("baby_length");
-        $childBirth->birth_method = $request->input("birth_method");
+        $childBirth->birthing_method = $request->input("birthing_method");
         $childBirth->birth_description = $request->input('birth_description');
         $childBirth->save();
 
@@ -136,7 +143,7 @@ class ChildBirthController extends Controller
 
     function detailReport($data)
     {
-        $totalBaby = count($data);
+        $total_baby = count($data);
         function getAmount($data, $property, $comparison)
         {
             $result =  count($data->filter(function ($val) use ($comparison, $property) {
@@ -159,10 +166,10 @@ class ChildBirthController extends Controller
         $waterBirthing = getAmount($data, 'birthing_method', 'water');
         $vaginalBirthing = getAmount($data, 'birthing_method', 'vaginal');
         $lotusBirthing = getAmount($data, 'birthing_method', 'lotus');
-        $gentleBirthing =getAmount($data, 'birthing_method', 'gentle');
+        $gentleBirthing = getAmount($data, 'birthing_method', 'gentle');
         $caesarBirthing = getAmount($data, 'birthing_method', 'caesar');
         $finalData = [
-            'totalBaby' => $totalBaby,
+            'total_baby' => $total_baby,
             'birth_description' => ['healthy' => $healthyBaby, 'disabled' => $disabledBaby, 'died' => $diedBaby],
             'baby_gender' => ['male' => $maleBaby, 'female' => $femaleBaby],
             'birthing_method' => ['lotus' => $lotusBirthing, 'water' => $waterBirthing, 'vaginal' => $vaginalBirthing, 'gentle' => $gentleBirthing, 'caesar' => $caesarBirthing]
@@ -173,33 +180,47 @@ class ChildBirthController extends Controller
     public function annualReport(Request $request, $year)
     {
         $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->get();
-        $averageGestationalAge = ChildBirth::selectRaw('round(AVG(gestational_age),0) as value')->whereRaw('YEAR(created_at) = ' . intval($year))->get()->toArray();
-        $result = $this->detailReport($baseData);
         $motherAgeList = ChildBirth::select(['mother_age'])->whereRaw('YEAR(created_at) = ' . intval($year))->distinct()->get();
+        $unTwinsBaby = $baseData->unique(function ($item) {
+            return $item->mother_id . $item->mother_age . $item->created_at->format('m');
+        });
+        $averageGestationalAge = $unTwinsBaby->sum('gestational_age') / count($unTwinsBaby);
+        $totalMother = count($unTwinsBaby);
+        $detailReport = $this->detailReport($baseData);
 
         for ($i = 0; $i < count($motherAgeList); $i++) {
             $age = $motherAgeList[$i]['mother_age'];
             $totalBaby = count($baseData->filter(function ($val) use ($age) {
                 return $val->mother_age == $age;
             }));
-            $motherAgeList[$i]['total'] = $totalBaby;
+            $motherAgeList[$i]['total_baby'] = $totalBaby;
         }
-        return response()->json(['message' => 'success', 'data' => $result, 'average_gestational_age' => $averageGestationalAge[0]['value'], 'maternal_age_group' => $motherAgeList]);
+        $finalReport = ['total_mother' => $totalMother, 'average_gestational_age' => $averageGestationalAge, ...$detailReport,  'maternal_age_group' => $motherAgeList];
+
+        return response()->json(['message' => 'success', 'data' => $finalReport,]);
     }
 
     public function monthlyReport(Request $request, $year, $month)
     {
         $baseData = ChildBirth::select(['*'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->get();
-        $result = $this->detailReport($baseData);
         $motherAgeList = ChildBirth::select(['mother_age'])->whereRaw('YEAR(created_at) = ' . intval($year))->whereRaw('MONTH(created_at) = ' . intval($month))->distinct()->get();
+
+        $unTwinsBaby = $baseData->unique(function ($item) {
+            return $item->mother_id . $item->mother_age . $item->created_at->format('m');
+        });
+        $averageGestationalAge = $unTwinsBaby->sum('gestational_age') / count($unTwinsBaby);
+        $totalMother = count($unTwinsBaby);
+        $detailReport = $this->detailReport($baseData);
 
         for ($i = 0; $i < count($motherAgeList); $i++) {
             $age = $motherAgeList[$i]['mother_age'];
             $totalBaby = count($baseData->filter(function ($val) use ($age) {
                 return $val->mother_age == $age;
             }));
-            $motherAgeList[$i]['total'] = $totalBaby;
+            $motherAgeList[$i]['total_baby'] = $totalBaby;
         }
-        return response()->json(['message' => 'success', 'data' => $result, 'maternal_age_group' => $motherAgeList]);
+        $finalReport = ['total_mother' => $totalMother, 'average_gestational_age' => $averageGestationalAge, ...$detailReport,  'maternal_age_group' => $motherAgeList];
+
+        return response()->json(['message' => 'success', 'data' => $finalReport]);
     }
 };
