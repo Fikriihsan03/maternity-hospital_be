@@ -42,11 +42,11 @@ class ChildBirthController extends Controller
         $validator = FacadesValidator::make($request->all(), [
             'mother_name' => 'required',
             'mother_nik' => 'required|integer|min_digits:16',
-            'mother_age' => 'required',
-            'gestational_age' => 'required|integer',
+            'mother_age' => 'required|integer',
+            'gestational_age' => 'required|numeric',
             'baby_gender' => 'required',
-            'baby_weight' => 'required|integer',
-            'baby_length' => 'required|integer',
+            'baby_weight' => 'required|numeric',
+            'baby_length' => 'required|numeric',
             'birthing_method' => 'required',
             'birth_description' => 'required'
 
