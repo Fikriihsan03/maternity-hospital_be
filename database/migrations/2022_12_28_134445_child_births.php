@@ -16,7 +16,7 @@ return new class extends Migration
         //
         Schema::create('child_births', function (Blueprint $table) {
             $table->id();
-            $table->string('mother_name', 100);
+            $table->integer('mother_id');
             $table->string('mother_age');
             $table->integer('gestational_age');
             $table->string('baby_gender');

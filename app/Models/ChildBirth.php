@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ChildBirth extends Model
 {
     protected $fillable = [
-        'mother_name',
+        'mother_id',
         'mother_age',
         'gestational_age',
         'baby_gender',
@@ -16,6 +16,7 @@ class ChildBirth extends Model
         'baby_length',
         'birth_description',
         'birthing_method',
-        'created_at'
+        'created_at',
+        'updated_at'
     ];
 }
